@@ -5,16 +5,17 @@ const app = express();
 
 app.use(express.json());
 
-// 🔒 Middleware zur API-Key-Prüfung
+// 🔒 API-Key Middleware
 app.use((req, res, next) => {
   const clientKey = req.headers['x-api-key'];
   if (!clientKey || clientKey !== process.env.PROXY_API_KEY) {
+    console.warn('❌ Zugriff verweigert – ungültiger oder fehlender API-Key');
     return res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' });
   }
   next();
 });
 
-// 🧾 Auth-Header vorbereiten
+// 🧾 Basic Auth Header vorbereiten
 const getAuthHeaders = () => {
   const auth = Buffer.from(`${process.env.DATAFORSEO_EMAIL}:${process.env.DATAFORSEO_PASSWORD}`).toString('base64');
   return {
@@ -23,7 +24,7 @@ const getAuthHeaders = () => {
   };
 };
 
-// 🧠 Hilfsfunktion: Array in tasks-Objekt umwandeln
+// 🧠 Hilfsfunktion: Array in Object {0: ..., 1: ...}
 const toTaskObject = (taskArray) => {
   const out = {};
   taskArray.forEach((item, idx) => {
@@ -32,60 +33,64 @@ const toTaskObject = (taskArray) => {
   return out;
 };
 
-// 🔍 1. Keyword Search Volume
-app.post('/api/search-volume', async (req, res) => {
+// 🛠 Generische Handler-Funktion mit Logging
+const handleProxyRequest = async (req, res, url, label) => {
   try {
+    console.log(`📥 ${label}: Eingehender Request`, JSON.stringify(req.body, null, 2));
     const payload = { tasks: toTaskObject(req.body.tasks) };
-    const response = await axios.post(
-      'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live',
-      payload,
-      { headers: getAuthHeaders() }
-    );
-    res.json(response.data);
+    console.log(`📤 ${label}: Weitergeleitet an DataForSEO`, JSON.stringify(payload, null, 2));
+
+    const response = await axios.post(url, payload, { headers: getAuthHeaders() });
+
+    console.log(`✅ ${label}: Erfolgreiche Antwort erhalten`);
+    res.status(response.status).json(response.data);
   } catch (err) {
-    res.status(err.response?.status || 500).json({
+    const status = err.response?.status || 500;
+    console.error(`❌ ${label}: Fehler bei Anfrage (${status})`);
+    if (err.response?.data) {
+      console.error('Fehlerdetails:', JSON.stringify(err.response.data, null, 2));
+    } else {
+      console.error('Fehler:', err.message);
+    }
+
+    res.status(status).json({
       error: err.message,
-      details: err.response?.data
+      details: err.response?.data || null
     });
   }
+};
+
+// 🔍 1. Keyword Search Volume
+app.post('/api/search-volume', async (req, res) => {
+  await handleProxyRequest(
+    req,
+    res,
+    'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live',
+    'SearchVolume'
+  );
 });
 
 // 💡 2. Keyword Suggestions
 app.post('/api/keyword-suggestions', async (req, res) => {
-  try {
-    const payload = { tasks: toTaskObject(req.body.tasks) };
-    const response = await axios.post(
-      'https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live',
-      payload,
-      { headers: getAuthHeaders() }
-    );
-    res.json(response.data);
-  } catch (err) {
-    res.status(err.response?.status || 500).json({
-      error: err.message,
-      details: err.response?.data
-    });
-  }
+  await handleProxyRequest(
+    req,
+    res,
+    'https://api.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live',
+    'KeywordSuggestions'
+  );
 });
 
 // 🔎 3. SERP Analysis
 app.post('/api/serp-analysis', async (req, res) => {
-  try {
-    const payload = { tasks: toTaskObject(req.body.tasks) };
-    const response = await axios.post(
-      'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
-      payload,
-      { headers: getAuthHeaders() }
-    );
-    res.json(response.data);
-  } catch (err) {
-    res.status(err.response?.status || 500).json({
-      error: err.message,
-      details: err.response?.data
-    });
-  }
+  await handleProxyRequest(
+    req,
+    res,
+    'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
+    'SERPAnalysis'
+  );
 });
 
+// 🟢 Start
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`✅ DataForSEO Proxy läuft auf Port ${PORT}`);
