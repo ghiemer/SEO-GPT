@@ -24,20 +24,27 @@ const getAuthHeaders = () => {
   };
 };
 
-// 🧠 Hilfsfunktion: Array in Object {0: ..., 1: ...}
-const toTaskObject = (taskArray) => {
-  const out = {};
-  taskArray.forEach((item, idx) => {
-    out[idx.toString()] = item;
-  });
-  return out;
+// 🧠 normalizeTasks: akzeptiert Array oder Objekt
+const normalizeTasks = (input) => {
+  if (Array.isArray(input)) {
+    const out = {};
+    input.forEach((item, idx) => {
+      out[idx.toString()] = item;
+    });
+    return out;
+  }
+  if (typeof input === 'object' && input !== null) {
+    return input;
+  }
+  throw new Error("Invalid 'tasks' format. Must be an array or object.");
 };
 
 // 🛠 Generische Handler-Funktion mit Logging
 const handleProxyRequest = async (req, res, url, label) => {
   try {
     console.log(`📥 ${label}: Eingehender Request`, JSON.stringify(req.body, null, 2));
-    const payload = { tasks: toTaskObject(req.body.tasks) };
+
+    const payload = { tasks: normalizeTasks(req.body.tasks) };
     console.log(`📤 ${label}: Weitergeleitet an DataForSEO`, JSON.stringify(payload, null, 2));
 
     const response = await axios.post(url, payload, { headers: getAuthHeaders() });
