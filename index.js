@@ -5,13 +5,22 @@ const app = express();
 
 app.use(express.json());
 
-// 🔒 API-Key Middleware
+// 🔒 API-Key Middleware mit erweiterten Logs
 app.use((req, res, next) => {
   const clientKey = req.headers['x-api-key'];
-  if (!clientKey || clientKey !== process.env.PROXY_API_KEY) {
-    console.warn('❌ Zugriff verweigert – ungültiger oder fehlender API-Key');
-    return res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' });
+  const expectedKey = process.env.PROXY_API_KEY;
+
+  console.log('🔐 Auth-Check: Eingehender API-Key (verkürzt):', clientKey?.slice(0, 6) || '[keiner]');
+  if (!clientKey) {
+    console.warn('❌ Zugriff verweigert – kein API-Key übermittelt.');
+    return res.status(401).json({ error: 'Unauthorized: Missing x-api-key in header.' });
   }
+  if (clientKey !== expectedKey) {
+    console.warn('❌ Zugriff verweigert – ungültiger API-Key:', clientKey.slice(0, 6), '...');
+    return res.status(403).json({ error: 'Forbidden: Invalid API key.' });
+  }
+
+  console.log('✅ Authentifizierung erfolgreich.');
   next();
 });
 
@@ -39,25 +48,25 @@ const normalizeTasks = (input) => {
   throw new Error("Invalid 'tasks' format. Must be an array or object.");
 };
 
-// 🛠 Generische Handler-Funktion mit Logging
+// 🛠 Generischer Proxy-Handler mit Logging
 const handleProxyRequest = async (req, res, url, label) => {
   try {
-    console.log(`📥 ${label}: Eingehender Request`, JSON.stringify(req.body, null, 2));
+    console.log(`📥 ${label} - Eingehende Anfrage:`);
+    console.log(JSON.stringify(req.body, null, 2));
 
     const payload = { tasks: normalizeTasks(req.body.tasks) };
-    console.log(`📤 ${label}: Weitergeleitet an DataForSEO`, JSON.stringify(payload, null, 2));
+    console.log(`📤 ${label} - Anfrage an DataForSEO:`);
+    console.log(JSON.stringify(payload, null, 2));
 
     const response = await axios.post(url, payload, { headers: getAuthHeaders() });
 
-    console.log(`✅ ${label}: Erfolgreiche Antwort erhalten`);
+    console.log(`✅ ${label} - Erfolgreiche Antwort erhalten.`);
     res.status(response.status).json(response.data);
   } catch (err) {
     const status = err.response?.status || 500;
-    console.error(`❌ ${label}: Fehler bei Anfrage (${status})`);
+    console.error(`❌ ${label} - Fehler bei Anfrage (${status}):`, err.message);
     if (err.response?.data) {
-      console.error('Fehlerdetails:', JSON.stringify(err.response.data, null, 2));
-    } else {
-      console.error('Fehler:', err.message);
+      console.error('↪️ Fehlerinhalt:', JSON.stringify(err.response.data, null, 2));
     }
 
     res.status(status).json({
@@ -97,8 +106,8 @@ app.post('/api/serp-analysis', async (req, res) => {
   );
 });
 
-// 🟢 Start
+// 🟢 Server-Start
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`✅ DataForSEO Proxy läuft auf Port ${PORT}`);
+  console.log(`🚀 DataForSEO Proxy läuft auf Port ${PORT}`);
 });
