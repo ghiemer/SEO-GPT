@@ -1,0 +1,128 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DataForSEO Proxy Actions",
+    "version": "1.0.0",
+    "description": "Proxy-Endpunkte zur Nutzung der DataForSEO API über GPT Actions."
+  },
+  "servers": [
+    {
+      "url": "https://DEIN-RENDER-NAME.onrender.com/api"
+    }
+  ],
+  "paths": {
+    "/search-volume": {
+      "post": {
+        "operationId": "getSearchVolume",
+        "summary": "Keyword-Suchvolumen abrufen",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "keywords": {
+                          "type": "array",
+                          "items": { "type": "string" }
+                        },
+                        "language_code": { "type": "string" },
+                        "location_code": { "type": "integer" },
+                        "search_partners": { "type": "boolean" }
+                      },
+                      "required": ["keywords", "language_code", "location_code"]
+                    }
+                  }
+                },
+                "required": ["tasks"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Erfolgreiche Antwort", "content": { "application/json": {} } }
+        }
+      }
+    },
+    "/keyword-suggestions": {
+      "post": {
+        "operationId": "getKeywordSuggestions",
+        "summary": "Keyword-Vorschläge abrufen",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "keywords": {
+                          "type": "array",
+                          "items": { "type": "string" }
+                        },
+                        "language_code": { "type": "string" },
+                        "location_code": { "type": "integer" }
+                      },
+                      "required": ["keywords", "language_code", "location_code"]
+                    }
+                  }
+                },
+                "required": ["tasks"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Erfolgreiche Antwort", "content": { "application/json": {} } }
+        }
+      }
+    },
+    "/serp-analysis": {
+      "post": {
+        "operationId": "getSERPAnalysis",
+        "summary": "SERP-Analyse durchführen",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "keyword": { "type": "string" },
+                        "language_code": { "type": "string" },
+                        "location_code": { "type": "integer" },
+                        "device": {
+                          "type": "string",
+                          "enum": ["desktop", "mobile"]
+                        }
+                      },
+                      "required": ["keyword", "language_code", "location_code"]
+                    }
+                  }
+                },
+                "required": ["tasks"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Erfolgreiche Antwort", "content": { "application/json": {} } }
+        }
+      }
+    }
+  }
+}
